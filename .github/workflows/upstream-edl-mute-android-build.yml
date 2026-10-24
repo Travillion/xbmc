@@ -56,9 +56,9 @@ jobs:
             android-tools/xbmc-depends
             android-tools/xbmc-tarballs
             kodi-build
-          key: kodi-master-android-arm64-ndk21.4-${{ github.run_id }}
+          key: kodi-master-android-arm64-ndk28.2-${{ github.run_id }}
           restore-keys: |
-            kodi-master-android-arm64-ndk21.4-
+            kodi-master-android-arm64-ndk28.2-
 
       - name: Restore compiler cache
         uses: actions/cache@v4
@@ -110,9 +110,9 @@ jobs:
           set -euxo pipefail
           sdkmanager --install \
             "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;33.0.1" \
-            "ndk;21.4.7075529"
+            "platforms;android-37.0" \
+            "build-tools;37.0.0" \
+            "ndk;28.2.13676358"
           yes | sdkmanager --licenses || true
           if [ ! -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
             SDKMANAGER_PATH="$(command -v sdkmanager)"
@@ -139,7 +139,7 @@ jobs:
             --with-tarballs="$KODI_TARBALLS" \
             --host=aarch64-linux-android \
             --with-sdk-path="$ANDROID_SDK_ROOT" \
-            --with-ndk-path="$ANDROID_SDK_ROOT/ndk/21.4.7075529" \
+            --with-ndk-path="$ANDROID_SDK_ROOT/ndk/28.2.13676358" \
             --prefix="$KODI_DEPENDS_PREFIX"
 
       - name: Build Kodi dependencies
