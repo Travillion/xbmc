@@ -1,0 +1,224 @@
+name: Upstream EDL mute Android build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - build/edl-mute-upstream-android
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kodi-upstream-edl-mute-android
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    env:
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      KODI_SOURCE: ${{ github.workspace }}/kodi
+      KODI_DEPENDS_PREFIX: ${{ github.workspace }}/android-tools/xbmc-depends
+      KODI_TARBALLS: ${{ github.workspace }}/android-tools/xbmc-tarballs
+      BUILD_DIR: ${{ github.workspace }}/kodi-build
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 5G
+
+    steps:
+      - name: Check out current upstream-port source
+        uses: actions/checkout@v4
+        with:
+          repository: Travillion/xbmc
+          ref: feature/edl-mute-truehd-passthrough
+          path: kodi
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Make Android package install alongside regular Kodi
+        shell: bash
+        working-directory: kodi
+        run: |
+          set -euxo pipefail
+          grep -n '^APP_PACKAGE ' version.txt
+          sed -i 's/^APP_PACKAGE org\.xbmc\.kodi$/APP_PACKAGE org.xbmc.kodi.edlmute/' version.txt
+          grep -qx 'APP_PACKAGE org.xbmc.kodi.edlmute' version.txt
+          git diff --check
+          git diff -- version.txt
+
+      - name: Restore current-master dependency and CMake caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            kodi/tools/depends/target
+            android-tools/xbmc-depends
+            android-tools/xbmc-tarballs
+            kodi-build
+          key: kodi-master-android-arm64-ndk21.4-${{ github.run_id }}
+          restore-keys: |
+            kodi-master-android-arm64-ndk21.4-
+
+      - name: Restore compiler cache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: kodi-master-android-arm64-ccache-${{ github.run_id }}
+          restore-keys: |
+            kodi-master-android-arm64-ccache-
+
+      - name: Reclaim unused hosted-runner disk space
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo rm -rf /usr/local/lib/android/sdk /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          df -h
+
+      - name: Show runner and source revision
+        shell: bash
+        run: |
+          set -euxo pipefail
+          uname -a
+          df -h
+          free -h
+          git -C "$KODI_SOURCE" rev-parse HEAD
+          git -C "$KODI_SOURCE" describe --tags --always || true
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf bison build-essential ccache curl flex gawk git gperf \
+            lib32stdc++6 lib32z1 lib32z1-dev libcurl4-openssl-dev unzip zip \
+            zlib1g-dev patchelf p7zip-full
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools"
+
+      - name: Install Android SDK and NDK packages
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;33.0.1" \
+            "ndk;21.4.7075529"
+          yes | sdkmanager --licenses || true
+          if [ ! -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            SDKMANAGER_PATH="$(command -v sdkmanager)"
+            CMDLINE_TOOLS_DIR="$(dirname "$(dirname "$SDKMANAGER_PATH")")"
+            mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+            ln -sfn "$CMDLINE_TOOLS_DIR" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          fi
+          test -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+
+      - name: Configure ccache
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ccache --set-config=max_size="$CCACHE_MAXSIZE"
+          ccache --show-stats
+
+      - name: Bootstrap and configure Kodi dependencies
+        shell: bash
+        working-directory: kodi/tools/depends
+        run: |
+          set -euxo pipefail
+          ./bootstrap
+          ./configure \
+            --with-tarballs="$KODI_TARBALLS" \
+            --host=aarch64-linux-android \
+            --with-sdk-path="$ANDROID_SDK_ROOT" \
+            --with-ndk-path="$ANDROID_SDK_ROOT/ndk/21.4.7075529" \
+            --prefix="$KODI_DEPENDS_PREFIX"
+
+      - name: Build Kodi dependencies
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/build-diagnostics"
+          df -h
+          make -C kodi/tools/depends -j2 > "$RUNNER_TEMP/kodi-depends-build.log" 2>&1
+          result=$?
+          tail -n 180 "$RUNNER_TEMP/kodi-depends-build.log"
+          cp "$RUNNER_TEMP/kodi-depends-build.log" "$GITHUB_WORKSPACE/build-diagnostics/kodi-depends-build.log" || true
+          df -h
+          exit "$result"
+
+      - name: Build binary add-ons
+        shell: bash
+        run: |
+          set -uo pipefail
+          make -C kodi/tools/depends/target/binary-addons -j2 > "$RUNNER_TEMP/kodi-binary-addons-build.log" 2>&1
+          result=$?
+          tail -n 220 "$RUNNER_TEMP/kodi-binary-addons-build.log"
+          cp "$RUNNER_TEMP/kodi-binary-addons-build.log" "$GITHUB_WORKSPACE/build-diagnostics/kodi-binary-addons-build.log" || true
+          exit "$result"
+
+      - name: Configure Kodi CMake build
+        shell: bash
+        working-directory: kodi
+        run: make -C tools/depends/target/cmakebuildsys BUILD_DIR="$BUILD_DIR"
+
+      - name: Build Kodi
+        shell: bash
+        working-directory: kodi-build
+        run: |
+          set -euxo pipefail
+          make -j2
+          ccache --show-stats || true
+          df -h
+
+      - name: Package APK
+        shell: bash
+        working-directory: kodi-build
+        run: |
+          set -euxo pipefail
+          make apk
+          find "$KODI_SOURCE" "$BUILD_DIR" -type f -iname "*.apk" -print
+
+      - name: Collect build diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p build-diagnostics
+          df -h > build-diagnostics/disk-space.txt || true
+          free -h > build-diagnostics/memory.txt || true
+          git -C "$KODI_SOURCE" rev-parse HEAD > build-diagnostics/kodi-commit.txt || true
+          git -C "$KODI_SOURCE" status --short > build-diagnostics/kodi-status.txt || true
+          find "$KODI_SOURCE" "$BUILD_DIR" -type f \( -name "CMakeError.log" -o -name "CMakeOutput.log" -o -name "config.log" -o -name "make.log" \) -print 2>/dev/null > build-diagnostics/log-file-list.txt || true
+          while IFS= read -r logfile; do
+            [ -f "$logfile" ] || continue
+            mkdir -p "build-diagnostics/$(dirname "$logfile")"
+            cp "$logfile" "build-diagnostics/$logfile" || true
+          done < build-diagnostics/log-file-list.txt
+
+      - name: Upload APK artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kodi-upstream-edl-mute-android-arm64
+          path: |
+            kodi/**/*.apk
+            kodi-build/**/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kodi-upstream-edl-mute-build-diagnostics
+          path: build-diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
