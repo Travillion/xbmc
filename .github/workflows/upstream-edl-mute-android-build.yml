@@ -43,8 +43,8 @@ jobs:
         run: |
           set -euxo pipefail
           grep -n '^APP_PACKAGE ' version.txt
-          sed -i 's/^APP_PACKAGE org\.xbmc\.kodi$/APP_PACKAGE org.xbmc.kodi.edlmute/' version.txt
-          grep -qx 'APP_PACKAGE org.xbmc.kodi.edlmute' version.txt
+          sed -i 's/^APP_PACKAGE org\.xbmc\.kodi$/APP_PACKAGE org.xbmc.kodi.edlmute2/' version.txt
+          grep -qx 'APP_PACKAGE org.xbmc.kodi.edlmute2' version.txt
           git diff --check
           git diff -- version.txt
 
