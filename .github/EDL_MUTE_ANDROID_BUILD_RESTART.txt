@@ -1,1 +1,1 @@
-Trigger a fresh Android build after updating the toolchain to NDK 28.2.13676358.
+Trigger a fresh Android build after adding debug-keystore generation before APK packaging.
