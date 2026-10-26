@@ -28,14 +28,30 @@ jobs:
       CCACHE_MAXSIZE: 5G
 
     steps:
-      - name: Check out current upstream-port source
+      - name: Check out EDL review-fix source
         uses: actions/checkout@v4
         with:
           repository: Travillion/xbmc
-          ref: feature/edl-mute-truehd-passthrough
+          ref: test/edl-mute-review-fixes
           path: kodi
           submodules: recursive
           fetch-depth: 1
+
+      # Fail fast before the expensive build if the repository secret is missing.
+      # The secret must contain the base64-encoded persistent debug.keystore.
+      - name: Restore persistent Android signing key
+        shell: bash
+        env:
+          ANDROID_DEBUG_KEYSTORE_BASE64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${ANDROID_DEBUG_KEYSTORE_BASE64:-}" ]]; then
+            echo "::error::Missing repository Actions secret ANDROID_DEBUG_KEYSTORE_BASE64. Add the base64-encoded persistent debug.keystore to Travillion/xbmc before building."
+            exit 1
+          fi
+          mkdir -p "$HOME/.android"
+          printf "%s" "$ANDROID_DEBUG_KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey
 
       - name: Make Android package install alongside regular Kodi
         shell: bash
@@ -178,22 +194,6 @@ jobs:
           make -j2
           ccache --show-stats || true
           df -h
-
-      - name: Prepare Android debug keystore for APK packaging
-        shell: bash
-        run: |
-          set -euxo pipefail
-          mkdir -p "$HOME/.android"
-          if [ ! -f "$HOME/.android/debug.keystore" ]; then
-            keytool -genkeypair -v \
-              -keystore "$HOME/.android/debug.keystore" \
-              -storepass android \
-              -alias androiddebugkey \
-              -keypass android \
-              -dname "CN=Android Debug,O=Android,C=US" \
-              -keyalg RSA -keysize 2048 -validity 10000
-          fi
-          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android
 
       - name: Package APK
         shell: bash
