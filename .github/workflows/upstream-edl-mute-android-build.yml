@@ -28,11 +28,11 @@ jobs:
       CCACHE_MAXSIZE: 5G
 
     steps:
-      - name: Check out EDL review-fix source with SMB authentication fix
+      - name: Check out current EDL mute PR source
         uses: actions/checkout@v4
         with:
           repository: Travillion/xbmc
-          ref: test/edl-mute-review-fixes-smb
+          ref: pr/edl-mute-truehd-passthrough
           path: kodi
           submodules: recursive
           fetch-depth: 1
