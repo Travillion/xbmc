@@ -1,6 +1,7 @@
 name: Upstream EDL mute Android build
 
 # Build current PR source after the generic silence-interface refactor.
+# Trigger a fresh build
 
 on:
   workflow_dispatch:
