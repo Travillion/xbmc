@@ -19658,7 +19658,7 @@ msgstr ""
 #. Help text for the encore mode setting
 #: system/settings/settings.xml
 msgctxt "#35304"
-msgid "Allow achievements you have already earned to be triggered again.[CR][CR]Applies the next time you load the game."
+msgid "Allow achievements you have already earned to be triggered again."
 msgstr ""
 
 #. Notification shown when hardcore mode refuses something, {0:s} is the feature
@@ -19993,7 +19993,37 @@ msgctxt "#35377"
 msgid "You:"
 msgstr ""
 
-#empty strings from id 35378 to 35504
+#. Setting to show games a few frames ahead to reduce input lag
+#: system/settings/settings.xml
+msgctxt "#35378"
+msgid "Enable run-ahead"
+msgstr ""
+
+#. Help text for setting "Enable run-ahead" of label #35378
+#: system/settings/settings.xml
+msgctxt "#35379"
+msgid "Make games respond sooner to the controller by running the emulator ahead and showing a frame from the future. This suits 8-bit and 16-bit systems. Systems with large save states, such as the PlayStation, may slow down."
+msgstr ""
+
+#. Setting for how many frames to run ahead
+#: system/settings/settings.xml
+msgctxt "#35380"
+msgid "Frames to run ahead"
+msgstr ""
+
+#. Help text for setting "Frames to run ahead" of label #35380
+#: system/settings/settings.xml
+msgctxt "#35381"
+msgid "Each frame removes one frame of delay, as long as the game has that much delay to remove. Going further skips the first frames of each move instead. Start at one, and raise it only if the game still responds late."
+msgstr ""
+
+#. Format for the run-ahead frames slider, e.g. "2 frames"
+#: system/settings/settings.xml
+msgctxt "#35382"
+msgid "{0:d} frames"
+msgstr ""
+
+#empty strings from id 35383 to 35504
 
 #. connection state "host unreachable"
 #: xbmc/pvr/addons/PVRClients.cpp
@@ -20123,7 +20153,14 @@ msgctxt "#35718"
 msgid "Attempt active"
 msgstr ""
 
-#empty strings from id 35719 to 35999
+#. Shown when Encore mode is switched on or off during a game, and under its help text in the game's settings
+#: xbmc/games/addons/cheevos/GameClientCheevos.cpp
+#: addons/skin.estuary/xml/Includes_Games.xml
+msgctxt "#35719"
+msgid "Applies the next time you load the game."
+msgstr ""
+
+#empty strings from id 35720 to 35999
 
 #: xbmc/peripherals/devices/PeripheralCecAdapter.cpp
 msgctxt "#36000"
