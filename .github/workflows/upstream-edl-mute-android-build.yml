@@ -74,7 +74,6 @@ jobs:
             kodi/tools/depends/target
             android-tools/xbmc-depends
             android-tools/xbmc-tarballs
-            kodi-build
           key: kodi-master-android-arm64-ndk28.2-${{ github.run_id }}
           restore-keys: |
             kodi-master-android-arm64-ndk28.2-
@@ -187,7 +186,12 @@ jobs:
       - name: Configure Kodi CMake build
         shell: bash
         working-directory: kodi
-        run: make -C tools/depends/target/cmakebuildsys BUILD_DIR="$BUILD_DIR"
+        run: |
+          set -euxo pipefail
+          # CMake build trees are source/configuration specific. Never reuse one
+          # from an earlier workflow run, even when dependency caches are restored.
+          rm -rf "$BUILD_DIR"
+          make -C tools/depends/target/cmakebuildsys BUILD_DIR="$BUILD_DIR"
 
       - name: Build Kodi
         shell: bash
@@ -215,7 +219,20 @@ jobs:
           free -h > build-diagnostics/memory.txt || true
           git -C "$KODI_SOURCE" rev-parse HEAD > build-diagnostics/kodi-commit.txt || true
           git -C "$KODI_SOURCE" status --short > build-diagnostics/kodi-status.txt || true
-          find "$KODI_SOURCE" "$BUILD_DIR" -type f \( -name "CMakeError.log" -o -name "CMakeOutput.log" -o -name "config.log" -o -name "make.log" \) -print 2>/dev/null > build-diagnostics/log-file-list.txt || true
+          find "$KODI_SOURCE" "$BUILD_DIR" -type f \( -name "CMakeError.log" -o -name "CMakeOutput.log" -o -name "config.log" -o -name "make.log" -o -name "CMakeCache.txt" -o -name "link.txt" \) -print 2>/dev/null > build-diagnostics/log-file-list.txt || true
+          # Capture CrossGUID package metadata and libraries from the restored
+          # dependency prefix and Kodi's dependency build tree.
+          {
+            echo "=== CrossGUID files in dependency prefix ==="
+            find "$KODI_DEPENDS_PREFIX" \( -iname '*crossguid*' -o -iname 'CrossGUIDConfig.cmake' \) -print 2>/dev/null || true
+            echo "=== CrossGUID files in Kodi dependency source/build tree ==="
+            find "$KODI_SOURCE/tools/depends/target/crossguid" \( -iname '*crossguid*' -o -name '.installed-*' -o -name '.configured-*' \) -print 2>/dev/null || true
+            echo "=== CrossGUID files in CMake build tree ==="
+            find "$BUILD_DIR" \( -iname '*crossguid*' -o -name 'link.txt' \) -print 2>/dev/null || true
+          } > build-diagnostics/crossguid-files.txt
+          if [ -f "$BUILD_DIR/CMakeCache.txt" ]; then
+            grep -Ei 'CrossGUID|crossguid|DEPENDS_PATH|ENABLE_INTERNAL_CROSSGUID' "$BUILD_DIR/CMakeCache.txt" > build-diagnostics/crossguid-cmake-cache.txt || true
+          fi
           while IFS= read -r logfile; do
             [ -f "$logfile" ] || continue
             mkdir -p "build-diagnostics/$(dirname "$logfile")"
