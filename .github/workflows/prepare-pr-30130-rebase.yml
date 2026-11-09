@@ -18,15 +18,16 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Rebase the preserved PR snapshot onto current upstream master
+      - name: Rebase only PR-specific commits onto current upstream master
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin backup/pr-30130-pre-rebase-7dbd27b
-          git fetch https://github.com/xbmc/xbmc.git master
-          git checkout -B rebase-work FETCH_HEAD
-          git rebase --onto FETCH_HEAD a180da3ec890359f0de014d101540c04bec2dec9
-          git log --oneline --decorate -8
-          git push origin HEAD:candidate/pr-30130-rebased-20261108
+          git fetch https://github.com/xbmc/xbmc.git master:refs/remotes/upstream/master
+          git checkout -B rebase-work origin/backup/pr-30130-pre-rebase-7dbd27b
+          git merge-base HEAD refs/remotes/upstream/master
+          git rebase --no-rebase-merges refs/remotes/upstream/master
+          git log --oneline --decorate -12
+          git push origin HEAD:candidate/pr-30130-rebased-20261109
