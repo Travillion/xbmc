@@ -1,6 +1,6 @@
 name: Upstream EDL mute Android build
 
-# Build current PR source after the generic silence-interface refactor.
+# Build rebased candidate v5 as an independent device-test APK.
 # Trigger device-test APK build after focused AudioEngine test run 20
 
 on:
@@ -31,11 +31,11 @@ jobs:
       CCACHE_MAXSIZE: 5G
 
     steps:
-      - name: Check out current EDL mute PR source
+      - name: Check out rebased EDL mute candidate v5
         uses: actions/checkout@v4
         with:
           repository: Travillion/xbmc
-          ref: pr/edl-mute-truehd-passthrough
+          ref: 4ffc1f7689153017f0beb5f3a465b1e20c12d0ea
           path: kodi
           submodules: recursive
           fetch-depth: 1
@@ -62,8 +62,8 @@ jobs:
         run: |
           set -euxo pipefail
           grep -n '^APP_PACKAGE ' version.txt
-          sed -i 's/^APP_PACKAGE org\.xbmc\.kodi$/APP_PACKAGE org.xbmc.kodi.edlmute2/' version.txt
-          grep -qx 'APP_PACKAGE org.xbmc.kodi.edlmute2' version.txt
+          sed -i 's/^APP_PACKAGE org\.xbmc\.kodi$/APP_PACKAGE org.xbmc.kodi.edlmute3/' version.txt
+          grep -qx 'APP_PACKAGE org.xbmc.kodi.edlmute3' version.txt
           git diff --check
           git diff -- version.txt
 
@@ -243,7 +243,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: kodi-upstream-edl-mute-android-arm64
+          name: kodi-edl-mute-rebased-v5-independent-android-arm64
           path: |
             kodi/**/*.apk
             kodi-build/**/*.apk
