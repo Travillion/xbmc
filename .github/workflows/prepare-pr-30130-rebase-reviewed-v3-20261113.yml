@@ -1,0 +1,155 @@
+name: Prepare PR 30130 rebase with reviewed conflict handlers
+
+on:
+  push:
+    branches:
+      - automation/rebase-pr30130-resolve-v3-20261113
+
+permissions:
+  contents: write
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Rebase saved PR snapshot onto current upstream master
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          SNAPSHOT="backup/pr30130-tested-002fae4"
+          EXPECTED_SNAPSHOT="002fae41e79b4535b4ef205da8606fcdab1f30e3"
+          CANDIDATE="candidate/pr-30130-rebased-20261113-v3"
+          SINK_FILE="xbmc/cores/AudioEngine/Engines/ActiveAE/ActiveAESink.cpp"
+          AUDIO_HEADER="xbmc/cores/VideoPlayer/VideoPlayerAudio.h"
+
+          git fetch origin "refs/heads/${SNAPSHOT}:refs/remotes/origin/${SNAPSHOT}"
+          ACTUAL_SNAPSHOT="$(git rev-parse "refs/remotes/origin/${SNAPSHOT}")"
+          test "${ACTUAL_SNAPSHOT}" = "${EXPECTED_SNAPSHOT}"
+
+          git fetch https://github.com/xbmc/xbmc.git master:refs/remotes/upstream/master
+          UPSTREAM="$(git rev-parse refs/remotes/upstream/master)"
+          BASE="$(git merge-base "${ACTUAL_SNAPSHOT}" "${UPSTREAM}")"
+
+          echo "Saved tested snapshot: ${ACTUAL_SNAPSHOT}"
+          echo "Current upstream master: ${UPSTREAM}"
+          echo "Calculated common ancestor: ${BASE}"
+
+          git checkout -B rebase-work "${ACTUAL_SNAPSHOT}"
+
+          set +e
+          git rebase --no-rebase-merges --onto "${UPSTREAM}" "${BASE}" rebase-work
+          REBASE_STATUS=$?
+          set -e
+
+          if [ "${REBASE_STATUS}" -ne 0 ]; then
+            while [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; do
+              UNMERGED="$(git diff --name-only --diff-filter=U)"
+              echo "Current unmerged paths:"
+              printf '%s\\n' "${UNMERGED}"
+
+              if [ "${UNMERGED}" = "${SINK_FILE}" ]; then
+                echo "Applying reviewed ActiveAESink resolution."
+                git checkout --ours -- "${SINK_FILE}"
+                python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("xbmc/cores/AudioEngine/Engines/ActiveAE/ActiveAESink.cpp")
+          source = path.read_text()
+          old = """      if (frames > 0)
+                {
+                  m_packer->Reset();
+                  m_packer->Pack(m_sinkFormat.m_streamInfo, buffer[0], frames);
+                  // Content is the hold over.
+                  m_fillerArmed = false;
+                }
+                else if (samples->pkt->pause_burst_ms > 0)"""
+          new = """      if (samples->pkt->pause_burst_ms > 0 && frames > 0)
+                {
+                  // EDL mute packets retain frames; replace their payload with an IEC pause burst.
+                  bool burst = m_extStreaming && (m_packer->GetBuffer()[0] != 0);
+                  if (!m_packer->PackPause(m_sinkFormat.m_streamInfo, samples->pkt->pause_burst_ms, burst))
+                    skipSwap = true;
+                }
+                else if (frames > 0)
+                {
+                  m_packer->Reset();
+                  m_packer->Pack(m_sinkFormat.m_streamInfo, buffer[0], frames);
+                  // Content is the hold over.
+                  m_fillerArmed = false;
+                }
+                else if (samples->pkt->pause_burst_ms > 0)"""
+          if source.count(old) != 1:
+              raise SystemExit("Expected upstream ActiveAESink block not found exactly once; refusing resolution.")
+          path.write_text(source.replace(old, new, 1))
+          PY
+                git add "${SINK_FILE}"
+
+              elif [ "${UNMERGED}" = "${AUDIO_HEADER}" ]; then
+                echo "Merging reviewed VideoPlayerAudio.h feature and upstream state."
+                git checkout --theirs -- "${AUDIO_HEADER}"
+                python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("xbmc/cores/VideoPlayer/VideoPlayerAudio.h")
+          source = path.read_text()
+
+          def once(old, new, label):
+              global source
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one {label} anchor, found {count}; refusing resolution.")
+              source = source.replace(old, new, 1)
+
+          if "#include <atomic>" not in source:
+              once("#include <cstdint>\n", "#include <atomic>\n#include <cstdint>\n", "cstdint include")
+
+          if "void OnPlaybackStart() override" not in source:
+              once("  bool IsPassthrough() const override;\n",
+                   "  bool IsPassthrough() const override;\n  void OnPlaybackStart() override { m_playbackStart = true; }\n",
+                   "playback-start method")
+
+          if "bool m_holdPending{false};" not in source:
+              once("  int m_prevsynctype;\n",
+                   "  int m_prevsynctype;\n\n  bool m_holdPending{false};\n  double m_holdDelivered{0.0};\n"
+                   "  //! Set by the player thread, taken by this one at the first frame of the playback\n"
+                   "  std::atomic<bool> m_playbackStart{false};\n",
+                   "upstream hold-state members")
+
+          path.write_text(source)
+          PY
+                git add "${AUDIO_HEADER}"
+
+              else
+                echo "::error::Unreviewed conflict set. Stopping without guessing."
+                exit 1
+              fi
+
+              set +e
+              GIT_EDITOR=true git rebase --continue
+              CONTINUE_STATUS=$?
+              set -e
+              if [ "${CONTINUE_STATUS}" -ne 0 ]; then
+                if [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+                  echo "::error::Rebase continuation failed without a recognized file conflict."
+                  exit 1
+                fi
+              fi
+            done
+          fi
+
+          echo "Rebase completed. Verifying history and candidate."
+          test -z "$(git rev-list --merges "${UPSTREAM}..HEAD")"
+          echo "Rebased feature commit count:"
+          git rev-list --count "${UPSTREAM}..HEAD"
+          git log --oneline --decorate -12
+          git diff --stat "${UPSTREAM}...HEAD"
+          git push origin "HEAD:refs/heads/${CANDIDATE}"
