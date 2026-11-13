@@ -68,19 +68,19 @@ jobs:
           path = Path("xbmc/cores/AudioEngine/Engines/ActiveAE/ActiveAESink.cpp")
           source = path.read_text()
           upstream = """      if (frames > 0)
-                {
-                  m_packer->Reset();
-                  m_packer->Pack(m_sinkFormat.m_streamInfo, buffer[0], frames);
-                }
-                else if (samples->pkt->pause_burst_ms > 0)
-                {
-                  // construct a pause burst if we have already output valid audio
-                  bool burst = m_extStreaming && (m_packer->GetBuffer()[0] != 0);
-                  if (!m_packer->PackPause(m_sinkFormat.m_streamInfo, samples->pkt->pause_burst_ms, burst))
-                    skipSwap = true;
-                }
-                else
-                  m_packer->Reset();"""
+      {
+        m_packer->Reset();
+        m_packer->Pack(m_sinkFormat.m_streamInfo, buffer[0], frames);
+      }
+      else if (samples->pkt->pause_burst_ms > 0)
+      {
+        // construct a pause burst if we have already output valid audio
+        bool burst = m_extStreaming && (m_packer->GetBuffer()[0] != 0);
+        if (!m_packer->PackPause(m_sinkFormat.m_streamInfo, samples->pkt->pause_burst_ms, burst))
+          skipSwap = true;
+      }
+      else
+        m_packer->Reset();"""
           feature = """      if (samples->pkt->pause_burst_ms > 0)
                 {
                   // Replace the encoded payload with an IEC61937 pause burst during EDL MUTE.
