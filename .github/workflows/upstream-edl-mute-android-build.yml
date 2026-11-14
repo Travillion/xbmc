@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Travillion/xbmc
-          ref: 4ffc1f7689153017f0beb5f3a465b1e20c12d0ea
+          ref: ac0abd41261d68e6173bba6f63bb2455bcf417ac
           path: kodi
           submodules: recursive
           fetch-depth: 1
@@ -67,16 +67,16 @@ jobs:
           git diff --check
           git diff -- version.txt
 
-      - name: Restore current-master dependency and CMake caches
+      - name: Restore isolated v6 dependency and CMake caches
         uses: actions/cache@v4
         with:
           path: |
             kodi/tools/depends/target
             android-tools/xbmc-depends
             android-tools/xbmc-tarballs
-          key: kodi-master-android-arm64-ndk28.2-${{ github.run_id }}
+          key: kodi-rebased-v6-android-arm64-ndk28.2-flatbuffers25.12.19-${{ github.run_id }}
           restore-keys: |
-            kodi-master-android-arm64-ndk28.2-
+            kodi-rebased-v6-android-arm64-ndk28.2-flatbuffers25.12.19-
 
       - name: Restore compiler cache
         uses: actions/cache@v4
