@@ -64,7 +64,7 @@ jobs:
           git diff --check
           git diff -- version.txt
 
-      - name: Restore isolated v6 dependency and CMake caches
+      - name: Restore isolated v7 dependency and CMake caches
         uses: actions/cache@v4
         with:
           path: |
@@ -240,7 +240,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: kodi-edl-mute-rebased-v5-independent-android-arm64
+          name: kodi-edl-mute-rebased-v7-independent-android-arm64
           path: |
             kodi/**/*.apk
             kodi-build/**/*.apk
