@@ -5,9 +5,6 @@ name: Upstream EDL mute Android build
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - build/edl-mute-upstream-android
 
 permissions:
   contents: read
