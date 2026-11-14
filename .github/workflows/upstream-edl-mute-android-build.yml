@@ -1,6 +1,6 @@
 name: Upstream EDL mute Android build
 
-# Build rebased candidate v5 as an independent device-test APK.
+# Build rebased candidate v7 as an independent device-test APK.
 # Trigger device-test APK build after focused AudioEngine test run 20
 
 on:
@@ -28,11 +28,11 @@ jobs:
       CCACHE_MAXSIZE: 5G
 
     steps:
-      - name: Check out rebased EDL mute candidate v5
+      - name: Check out rebased EDL mute candidate v7
         uses: actions/checkout@v4
         with:
           repository: Travillion/xbmc
-          ref: ac0abd41261d68e6173bba6f63bb2455bcf417ac
+          ref: 73794a0275f5c8535f8c770681a1c6e59021a66b
           path: kodi
           submodules: recursive
           fetch-depth: 1
@@ -71,9 +71,9 @@ jobs:
             kodi/tools/depends/target
             android-tools/xbmc-depends
             android-tools/xbmc-tarballs
-          key: kodi-rebased-v6-android-arm64-ndk28.2-flatbuffers25.12.19-${{ github.run_id }}
+          key: kodi-rebased-v7-android-arm64-ndk28.2-flatbuffers25.12.19-${{ github.run_id }}
           restore-keys: |
-            kodi-rebased-v6-android-arm64-ndk28.2-flatbuffers25.12.19-
+            kodi-rebased-v7-android-arm64-ndk28.2-flatbuffers25.12.19-
 
       - name: Restore compiler cache
         uses: actions/cache@v4
