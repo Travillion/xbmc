@@ -124,8 +124,10 @@ jobs:
           from pathlib import Path
           path = Path("xbmc/cores/VideoPlayer/DVDCodecs/Audio/DVDAudioCodecPassthrough.cpp")
           source = path.read_text()
-          anchor = "  m_parser.SetCoreOnly(false);\\n"
-          addition = "  m_parser.SetDTSHDMA(m_format.m_streamInfo.m_type == CAEStreamInfo::STREAM_TYPE_DTSHD_MA);\\n"
+          anchor = """  m_parser.SetCoreOnly(false);
+          """
+          addition = """  m_parser.SetDTSHDMA(m_format.m_streamInfo.m_type == CAEStreamInfo::STREAM_TYPE_DTSHD_MA);
+          """
           if source.count(anchor) != 1:
               raise SystemExit("Expected parser initialization anchor not found exactly once; refusing resolution.")
           if "m_parser.SetDTSHDMA(" not in source:
