@@ -1,10 +1,13 @@
 name: Upstream EDL mute Android build
 
-# Build rebased candidate v7 as an independent device-test APK.
-# Trigger device-test APK build after focused AudioEngine test run 20
+# Build the freshly rebased Nov 16 candidate as an independent device-test APK.
+# Keep workflow_dispatch available and allow a controlled push trigger on this build branch.
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - build/edl-mute-upstream-android
 
 permissions:
   contents: read
@@ -28,11 +31,11 @@ jobs:
       CCACHE_MAXSIZE: 5G
 
     steps:
-      - name: Check out rebased EDL mute candidate v7
+      - name: Check out rebased EDL mute candidate Nov 16
         uses: actions/checkout@v4
         with:
           repository: Travillion/xbmc
-          ref: 73794a0275f5c8535f8c770681a1c6e59021a66b
+          ref: ef82a0a700e62e62db8a34e08fd26ff880b65214
           path: kodi
           submodules: recursive
           fetch-depth: 1
@@ -64,15 +67,16 @@ jobs:
           git diff --check
           git diff -- version.txt
 
-      - name: Restore isolated v7 dependency and CMake caches
+      - name: Restore isolated Nov 16 dependency caches
         uses: actions/cache@v4
         with:
           path: |
             kodi/tools/depends/target
             android-tools/xbmc-depends
             android-tools/xbmc-tarballs
-          key: kodi-rebased-v7-android-arm64-ndk28.2-flatbuffers25.12.19-${{ github.run_id }}
+          key: kodi-rebased-20261116-android-arm64-ndk28.2-flatbuffers25.12.19-${{ github.run_id }}
           restore-keys: |
+            kodi-rebased-20261116-android-arm64-ndk28.2-flatbuffers25.12.19-
             kodi-rebased-v7-android-arm64-ndk28.2-flatbuffers25.12.19-
 
       - name: Restore compiler cache
@@ -240,7 +244,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: kodi-edl-mute-rebased-v7-independent-android-arm64
+          name: kodi-edl-mute-rebased-20261116-independent-android-arm64
           path: |
             kodi/**/*.apk
             kodi-build/**/*.apk
