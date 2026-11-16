@@ -117,6 +117,23 @@ jobs:
           PY
                 git add "${AUDIO_HEADER}"
 
+              elif [ "${UNMERGED}" = "xbmc/cores/VideoPlayer/DVDCodecs/Audio/DVDAudioCodecPassthrough.cpp" ]; then
+                # Keep the PR's parser/timestamp reset and add upstream's DTS-HD MA stream hint.
+                git checkout --theirs -- "xbmc/cores/VideoPlayer/DVDCodecs/Audio/DVDAudioCodecPassthrough.cpp"
+                python3 - <<'PY'
+          from pathlib import Path
+          path = Path("xbmc/cores/VideoPlayer/DVDCodecs/Audio/DVDAudioCodecPassthrough.cpp")
+          source = path.read_text()
+          anchor = "  m_parser.SetCoreOnly(false);\\n"
+          addition = "  m_parser.SetDTSHDMA(m_format.m_streamInfo.m_type == CAEStreamInfo::STREAM_TYPE_DTSHD_MA);\\n"
+          if source.count(anchor) != 1:
+              raise SystemExit("Expected parser initialization anchor not found exactly once; refusing resolution.")
+          if "m_parser.SetDTSHDMA(" not in source:
+              source = source.replace(anchor, anchor + addition, 1)
+          path.write_text(source)
+          PY
+                git add "xbmc/cores/VideoPlayer/DVDCodecs/Audio/DVDAudioCodecPassthrough.cpp"
+
               elif [ "${UNMERGED}" = "${STREAM_HEADER}" ]; then
                 git checkout --ours -- "${STREAM_HEADER}"
                 python3 - <<'PY'
