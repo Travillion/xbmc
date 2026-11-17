@@ -1,4 +1,4 @@
-name: Prepare PR 30130 rebase onto current upstream master (Nov 16)
+name: Rebase tested PR 30130 candidate onto latest upstream master
 
 on:
   push:
@@ -18,16 +18,16 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Rebase saved PR snapshot onto current upstream master
+      - name: Rebase device-tested candidate onto latest upstream master
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          SNAPSHOT="pr/edl-mute-truehd-passthrough"
-          EXPECTED_SNAPSHOT="73794a0275f5c8535f8c770681a1c6e59021a66b"
-          CANDIDATE="candidate/pr-30130-rebased-20261116"
+          SNAPSHOT="candidate/pr-30130-rebased-20261116"
+          EXPECTED_SNAPSHOT="ef82a0a700e62e62db8a34e08fd26ff880b65214"
+          CANDIDATE="candidate/pr-30130-rebased-latest-20261116"
           SINK_FILE="xbmc/cores/AudioEngine/Engines/ActiveAE/ActiveAESink.cpp"
           AUDIO_HEADER="xbmc/cores/VideoPlayer/VideoPlayerAudio.h"
           STREAM_HEADER="xbmc/cores/AudioEngine/Engines/ActiveAE/ActiveAEStream.h"
@@ -39,7 +39,7 @@ jobs:
           git fetch https://github.com/xbmc/xbmc.git master:refs/remotes/upstream/master
           UPSTREAM="$(git rev-parse refs/remotes/upstream/master)"
           BASE="$(git merge-base "${ACTUAL_SNAPSHOT}" "${UPSTREAM}")"
-          echo "Saved tested snapshot: ${ACTUAL_SNAPSHOT}"
+          echo "Saved tested candidate: ${ACTUAL_SNAPSHOT}"
           echo "Current upstream master: ${UPSTREAM}"
           echo "Calculated common ancestor: ${BASE}"
           git checkout -B rebase-work "${ACTUAL_SNAPSHOT}"
